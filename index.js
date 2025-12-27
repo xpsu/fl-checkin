@@ -6,7 +6,7 @@ const TOKEN = process.env.MY_TOKEN // 建议把 Authorization 放在这里
 const PUSH_PLUS_TOKEN = process.env.PUSH_PLUS_TOKEN
 
 async function doCheckIn() {
-  console.log('🚀 开始执行签到任务 [fljc.cc]...')
+  console.log('🚀 开始执行签到任务 [fljc.top]...')
 
   if (!COOKIE && !TOKEN) {
     console.error('❌ 错误：未找到 Cookie 或 Token，请检查 GitHub Secrets 配置。')
