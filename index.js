@@ -4,7 +4,7 @@ const axios = require('axios')
 // 从环境变量读取配置，保密性第一！
 // 这些变量稍后会在 GitHub 仓库的 Secrets 中配置
 const COOKIE = process.env.MY_COOKIE
-const PUSH_PLUS_TOKEN = process.env.PUSH_PLUS_TOKEN // 选填，用于微信推送
+const token = process.env.PUSH_PLUS_TOKEN // 选填，用于微信推送
 
 // 模拟签到函数
 async function doCheckIn() {
@@ -90,7 +90,7 @@ async function doCheckIn() {
 // ⬇️ 这是一个通用的 PushPlus 推送函数
 async function sendNotification(content) {
 
-  if (!PUSH_PLUS_TOKEN) {
+  if (!token) {
     console.log('⚠️ 未配置 PUSH_PLUS_TOKEN，跳过微信推送')
     return
   }
@@ -99,7 +99,7 @@ async function sendNotification(content) {
     console.log('📨 正在发送微信推送...')
 
     await axios.post('http://www.pushplus.plus/send', {
-      token: PUSH_PLUS_TOKEN,
+      token: token,
       title: '自动签到通知', // 消息标题
       content: content,      // 消息内容 (支持 HTML 或 纯文本)
       template: 'html'       // 使用 HTML 格式，这样内容换行更清晰
@@ -110,6 +110,6 @@ async function sendNotification(content) {
     console.error('❌ 微信推送失败:', error.message)
     // 这里不抛出异常，以免因为推送失败导致整个 Action 显示为失败（看你个人喜好）
   }
-
+}
 // 执行主函数
 doCheckIn()
