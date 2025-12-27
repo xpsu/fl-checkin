@@ -16,7 +16,7 @@ async function doCheckIn() {
   try {
     // 动态生成时间戳，对应你抓到的 ?t=1766859062861
     const timestamp = new Date().getTime()
-    const targetUrl = `https://fljc.cc/api/v1/user/checkIn?t=${timestamp}`
+    const targetUrl = `https://fljc.top/api/v1/user/checkIn?t=${timestamp}`
 
     // ⚠️ 注意：根据你的抓包，这里改成了 GET 请求
     const response = await axios.get(targetUrl, {
