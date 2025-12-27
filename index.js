@@ -28,8 +28,8 @@ async function doCheckIn() {
 
         // 伪装部分
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Referer': 'https://fljc.cc/dashboard', // 更新为新域名
-        'Origin': 'https://fljc.cc',
+        'Referer': 'https://fljc.top/dashboard', // 更新为新域名
+        'Origin': 'https://fljc.top',
         'Accept': 'application/json, text/plain, */*',
         'Accept-Language': 'zh-CN,zh;q=0.9',
       }
