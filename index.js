@@ -16,7 +16,7 @@ async function doCheckIn() {
   try {
     // 动态生成时间戳，对应你抓到的 ?t=1766859062861
     const timestamp = new Date().getTime()
-    const targetUrl = `https://fljc.top/api/v1/user/checkIn?t=${timestamp}`
+    const targetUrl = `https://fljc.cc/api/v1/user/checkIn?t=${timestamp}`
 
     // ⚠️ 注意：根据你的抓包，这里改成了 GET 请求
     const response = await axios.get(targetUrl, {
@@ -28,7 +28,7 @@ async function doCheckIn() {
 
         // 伪装部分
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
-        'Referer': 'https://fljc.top/dashboard', // 更新为新域名
+        'Referer': 'https://fljc.cc/dashboard', // 更新为新域名
         'Accept': 'application/json, text/plain, */*',
         'Accept-Language': 'zh-CN,zh;q=0.9',
       }
