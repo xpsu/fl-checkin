@@ -1,115 +1,121 @@
-// index.js
 const axios = require('axios')
 
-// 从环境变量读取配置，保密性第一！
-// 这些变量稍后会在 GitHub 仓库的 Secrets 中配置
+// 环境变量获取
 const COOKIE = process.env.MY_COOKIE
-const token = process.env.PUSH_PLUS_TOKEN // 选填，用于微信推送
+const TOKEN = process.env.MY_TOKEN // 建议把 Authorization 放在这里
+const PUSH_PLUS_TOKEN = process.env.PUSH_PLUS_TOKEN
 
-// 模拟签到函数
 async function doCheckIn() {
-  console.log('🚀 开始执行签到任务...')
+  console.log('🚀 开始执行签到任务 [fljc.cc]...')
 
-  if (!COOKIE) {
-    console.error('❌ 错误：未找到 COOKIE 环境变量')
+  if (!COOKIE && !TOKEN) {
+    console.error('❌ 错误：未找到 Cookie 或 Token，请检查 GitHub Secrets 配置。')
     process.exit(1)
   }
 
   try {
-    const targetUrl = 'https://flzt.top/api/v1/user/checkin'
+    // 动态生成时间戳，对应你抓到的 ?t=1766859062861
+    const timestamp = new Date().getTime()
+    const targetUrl = `https://fljc.cc/api/v1/user/checkIn?t=${timestamp}`
 
-    // 注意：这里保留了上一轮建议添加的 headers
-    const response = await axios.post(targetUrl, {}, {
+    // ⚠️ 注意：根据你的抓包，这里改成了 GET 请求
+    const response = await axios.get(targetUrl, {
       headers: {
+        // 鉴权部分：优先使用 Token，如果没有则依赖 Cookie
+        // 如果你的抓包里 Authorization 有值，请务必配置 MY_TOKEN
+        ...(TOKEN ? {'Authorization': TOKEN} : {}),
         'Cookie': COOKIE,
+
+        // 伪装部分
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Referer': 'https://fljc.cc/dashboard', // 更新为新域名
+        'Origin': 'https://fljc.cc',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'zh-CN,zh;q=0.9',
       }
     })
 
     const data = response.data
+    console.log('🔍 服务端返回原始数据:', JSON.stringify(data))
 
-    // 获取当前北京时间
+    // 获取北京时间
     const timeString = new Date().toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})
 
-    // === 情况 A: 签到成功 (根据实际返回判断，假设 1 或 true 代表成功) ===
-    if (data && (data.ret === 1 || data.data === true || data.message === "Checkin Successful")) {
-      // ⚠️注意：不同网站成功标识不一样，如果不知道，先看 Log
+    // === 判断逻辑 (根据通常的 API 习惯调整) ===
+    // 既然是 GET 请求，成功通常返回 { ret: 1 } 或 { data: true }
+    // 如果失败或已签到，可能会有 { msg: "..." }
+    const isSuccess = (data.ret === 1) || (data.data === true) || (JSON.stringify(data).includes("成功"))
+    const isAlready = JSON.stringify(data).includes("已经") || JSON.stringify(data).includes("Already")
 
-      console.log('✅ 签到成功')
-
-      // 🟢 构造【绿色】成功消息
+    if (isSuccess) {
+      const trafficInfo = data.traffic ? `流量变动: ${data.traffic}` : ''
       const msg = `
-        <h3 style="color: #2c3e50;">📅 每日签到报告</h3>
-        <hr style="border: 1px dashed #ccc;">
-        <p><b>状态：</b> <span style="color: green; font-weight: bold;">✅ 签到成功</span></p>
+        <h3 style="color: #2c3e50;">📅 [fljc] 签到成功</h3>
+        <hr>
+        <p><b>状态：</b> <span style="color: green;">✅ 成功</span></p>
         <p><b>时间：</b> ${timeString}</p>
-        <p><b>服务端返回：</b> <code style="background: #f4f4f4; padding: 2px 5px;">${JSON.stringify(data)}</code></p>
+        <p><b>结果：</b> ${trafficInfo}</p>
+        <p><b>服务端消息：</b> ${data.msg || JSON.stringify(data)}</p>
       `
+      console.log('✅ 签到成功')
+      await sendNotification(msg)
 
+    } else if (isAlready) {
+      const msg = `
+        <h3 style="color: #2c3e50;">📅 [fljc] 重复签到</h3>
+        <hr>
+        <p><b>状态：</b> <span style="color: orange;">👌 今日已签</span></p>
+        <p><b>时间：</b> ${timeString}</p>
+      `
+      console.log('👌 今天已经签到过了')
       await sendNotification(msg)
 
     } else {
-      // === 情况 B: 签到失败 (虽然请求通了，但业务逻辑失败，比如“已签到过”) ===
-      console.error('⚠️ 签到异常')
-
-      // 🟠 构造【橙色】警告消息
+      // 失败情况
       const msg = `
-        <h3 style="color: #2c3e50;">📅 每日签到报告</h3>
-        <hr style="border: 1px dashed #ccc;">
-        <p><b>状态：</b> <span style="color: orange; font-weight: bold;">⚠️ 签到异常</span></p>
+        <h3 style="color: #2c3e50;">📅 [fljc] 签到失败</h3>
+        <hr>
+        <p><b>状态：</b> <span style="color: red;">❌ 失败</span></p>
         <p><b>时间：</b> ${timeString}</p>
-        <p><b>原因：</b> <code style="background: #f4f4f4; padding: 2px 5px;">${JSON.stringify(data)}</code></p>
+        <p><b>错误信息：</b> ${JSON.stringify(data)}</p>
       `
-
+      console.error('⚠️ 签到未成功')
       await sendNotification(msg)
     }
 
   } catch (error) {
-    // === 情况 C: 请求直接报错 (比如 403, 404, 网络断了) ===
-    console.error('❌ 请求出错', error.message)
-
+    console.error('❌ 请求执行出错', error.message)
     const timeString = new Date().toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})
 
-    // 🔴 构造【红色】错误消息
+    // 如果是 403/401，通常是 Token 过期
+    const errorDetail = error.response ? JSON.stringify(error.response.data) : error.message
+
     const msg = `
-      <h3 style="color: #2c3e50;">📅 每日签到报告</h3>
-      <hr style="border: 1px dashed #ccc;">
-      <p><b>状态：</b> <span style="color: red; font-weight: bold;">❌ 执行出错</span></p>
+      <h3 style="color: #2c3e50;">📅 [fljc] 脚本报错</h3>
+      <hr>
+      <p><b>状态：</b> <span style="color: red;">❌ 程序异常</span></p>
       <p><b>时间：</b> ${timeString}</p>
-      <p><b>错误信息：</b> ${error.message}</p>
-      <p><b>提示：</b> 可能是 Cookie 过期或 IP 被拦截。</p>
+      <p><b>详情：</b> ${errorDetail}</p>
+      <p><b>建议：</b> 检查 Token 是否过期或域名是否变更。</p>
     `
-
     await sendNotification(msg)
-    process.exit(1) // 标记 Action 为失败
+    process.exit(1)
   }
 }
 
-// 简单的推送通知函数（这里以 PushPlus 为例，免费好用）
-// 如果不需要推送，可以把这里删掉
-// ⬇️ 这是一个通用的 PushPlus 推送函数
+// 推送函数保持不变
 async function sendNotification(content) {
-
-  if (!token) {
-    console.log('⚠️ 未配置 PUSH_PLUS_TOKEN，跳过微信推送')
-    return
-  }
-
+  if (!PUSH_PLUS_TOKEN) return
   try {
-    console.log('📨 正在发送微信推送...')
-
     await axios.post('http://www.pushplus.plus/send', {
-      token: token,
-      title: '自动签到通知', // 消息标题
-      content: content,      // 消息内容 (支持 HTML 或 纯文本)
-      template: 'html'       // 使用 HTML 格式，这样内容换行更清晰
+      token: PUSH_PLUS_TOKEN,
+      title: '每日签到通知',
+      content: content,
+      template: 'html'
     })
-
-    console.log('✅ 微信推送发送成功！')
-  } catch (error) {
-    console.error('❌ 微信推送失败:', error.message)
-    // 这里不抛出异常，以免因为推送失败导致整个 Action 显示为失败（看你个人喜好）
+  } catch (e) {
+    console.error('推送失败', e.message)
   }
 }
-// 执行主函数
+
 doCheckIn()
