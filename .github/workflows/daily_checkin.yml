@@ -22,6 +22,7 @@ jobs:
       - name: Run Check-in Script
         env:
           # 从 GitHub Secrets 读取敏感数据
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           USER_TOKEN: ${{ secrets.USER_TOKEN }}
           USER_COOKIE: ${{ secrets.USER_COOKIE }}
           # 设置时区，方便日志查看
