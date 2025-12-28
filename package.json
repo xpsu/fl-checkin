@@ -2,7 +2,7 @@
   "name": "daily-checkin-bot",
   "version": "1.0.0",
   "description": "Auto check-in script",
-  "main": "checkin.js.js",
+  "main": "checkin.js",
   "scripts": {
     "start": "node checkin.js"
   },
