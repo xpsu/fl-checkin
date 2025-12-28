@@ -22,7 +22,7 @@ const sendNotification = async (title, content) => {
   }
 
   try {
-    const url = "http://www.pushplus.plus/send"
+    const url = "https://www.pushplus.plus/send"
     const response = await fetch(url, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
