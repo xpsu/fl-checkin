@@ -50,12 +50,20 @@ const runCheckIn = async () => {
   const url = `https://flzt.top/api/v1/user/checkIn?t=${timestamp}`
 
   const headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+
     "accept": "application/json, text/plain, */*",
-    "authorization": `Bearer ${TOKEN}`,
-    "content-type": "application/json",
+    "accept-language": "zh-CN,zh;q=0.9",
+    "authorization": TOKEN,
+    "priority": "u=1, i",
+    "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"Windows\"",
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-origin",
     "cookie": COOKIE,
-    "Referer": "https://flzt.top/dashboard",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+    "Referer": "https://flzt.top/dashboard"
   }
 
   try {
