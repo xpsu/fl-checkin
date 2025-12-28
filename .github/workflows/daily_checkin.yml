@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22' # 使用较新的 Node 版本以支持 fetch
+          node-version: '20' # 使用较新的 Node 版本以支持 fetch
 
       - name: Run Check-in Script
         env:
