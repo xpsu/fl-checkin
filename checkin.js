@@ -67,8 +67,6 @@ const runCheckIn = async () => {
         throw new Error(`HTTP ${response.status}: 服务器未返回 JSON`)
     }
 
-    console.log(result)
-
     let notifyTitle = ""
     let notifyContent = ""
 
