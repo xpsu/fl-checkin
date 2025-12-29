@@ -10,6 +10,7 @@ if (!TOKEN) {
   console.error("❌ 错误: 环境变量缺失。请检查 USER_TOKEN")
   process.exit(1)
 }
+
 /**
  * 发起PUSHPLUS推送
  * @param {String} title
