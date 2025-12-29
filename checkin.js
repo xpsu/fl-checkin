@@ -74,12 +74,7 @@ const runCheckIn = async () => {
     // --- 场景 1: 签到成功 (HTTP 200 + status success) ---
     if (response.ok && result.status === "success") {
       const reward = result.data.reward_mb
-      const total = (
-        result.data.total_checkin_traffic /
-        1024 /
-        1024 /
-        1024
-      ).toFixed(2)
+      const total = (result.data.total_checkin_traffic / 1024 / 1024 / 1024).toFixed(2)
       console.log(`✅ 签到成功! 获得: ${reward}MB`)
 
       notifyTitle = "机场签到成功 ✅"
