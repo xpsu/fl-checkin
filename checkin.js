@@ -91,9 +91,7 @@ const runCheckIn = async () => {
       // --- 场景 3: 真正的错误 (Token过期、Cookie失效等) ---
     } else {
       console.error("❌ 签到失败 (业务异常):", result)
-      throw new Error(
-        `服务端返回异常: ${result.message || JSON.stringify(result)}`,
-      )
+      throw new Error(`服务端返回异常: ${result.message || JSON.stringify(result)}`)
     }
 
     // 发送正常的推送结果
