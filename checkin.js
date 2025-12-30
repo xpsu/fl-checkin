@@ -38,7 +38,7 @@ const sendNotification = async (title, content) => {
 }
 
 /**
- * 签到
+ * 签到主逻辑
  * @returns {Promise<void>}
  */
 const runCheckIn = async () => {
