@@ -154,13 +154,6 @@ const processCheckInResult = (isOk: boolean, result: ApiResult): NotifyData => {
 // ================= 主程序 (Main) =================
 
 const run = async () => {
-    // 👇 临时加上这两行调试
-    console.log(`🔍 调试模式:`)
-    console.log(`   Email: ${USER_EMAIL}`)
-    console.log(`   密码长度: ${USER_PASSWORD?.length}`) // 看看长度对不对
-    console.log(`   密码首位: ${USER_PASSWORD?.[0]}`)
-    console.log(`   密码末位: ${USER_PASSWORD?.slice(-1)}`)
-
     if (!USER_EMAIL || !USER_PASSWORD) {
         console.error('❌ 缺环境变量')
         process.exit(1)

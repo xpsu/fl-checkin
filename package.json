@@ -2,7 +2,7 @@
   "name": "daily-auto-checkin",
   "version": "1.0.0",
   "description": "基于 Node.js 原生 fetch 的自动签到脚本",
-  "main": "checkin.js",
+  "main": "checkin-jsdoc.js",
   "private": true,
   "author": "xpsu",
   "license": "MIT",
