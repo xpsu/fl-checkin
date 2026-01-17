@@ -14,10 +14,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
         with:
-          node-version: '22' # 使用较新的 Node 版本以支持 fetch
+          bun-version: latest
+
+      # 👇 安装依赖 (虽然你可能没有其他依赖，但这是好习惯)
+      - name: Install Dependencies
+        run: bun install
 
       - name: Run Check-in Script
         env:
@@ -27,4 +31,4 @@ jobs:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           # 设置时区，方便日志查看
           TZ: Asia/Shanghai
-        run: node checkin.js
+        run: bun run checkin.ts

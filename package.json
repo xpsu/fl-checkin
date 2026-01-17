@@ -10,13 +10,17 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "start": "node checkin.js",
-    "test": "node --env-file=.env checkin.js"
+    "start": "bun run checkin.ts",
+    "test": "bun run checkin.ts"
   },
   "keywords": [
     "nodejs",
     "github-actions",
     "checkin",
     "automation"
-  ]
+  ],
+  "devDependencies": {
+    "@types/bun": "^1.3.6",
+    "tsx": "^4.21.0"
+  }
 }
