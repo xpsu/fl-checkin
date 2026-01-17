@@ -140,7 +140,12 @@ const run = async () => {
     } else if (result.message && result.message.includes("already checked in")) {
       console.log("⚠️ 今日已签到")
       notifyTitle = "机场今日已签到 ✅"
-      notifyContent = `账号: ${USER_EMAIL}<br>状态: ${result.message}<br>无需重复操作。`
+      notifyContent = `
+        <div style="border: 1px solid #4caf50; padding: 10px; border-radius: 5px;">
+          <p><b>账号:</b> <span style="color: #4caf50; font-weight: bold;">${USER_EMAIL}</span></p>
+          <p style="font-size: 12px; color: grey;"> <b>服务端提示：</b>${result.message}</p>
+        </div>
+        `
 
       // --- 场景 C: 其他错误 ---
     } else {
