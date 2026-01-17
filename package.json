@@ -1,26 +1,15 @@
 {
   "name": "daily-auto-checkin",
   "version": "1.0.0",
-  "description": "基于 Node.js 原生 fetch 的自动签到脚本",
-  "main": "checkin-jsdoc.js",
-  "private": true,
-  "author": "xpsu",
-  "license": "MIT",
-  "engines": {
-    "node": ">=18.0.0"
-  },
+  "type": "module",
   "scripts": {
-    "start": "bun run checkin.ts",
-    "test": "bun run checkin.ts"
+    "start": "bun run checkin.ts"
   },
-  "keywords": [
-    "nodejs",
-    "github-actions",
-    "checkin",
-    "automation"
-  ],
+  "dependencies": {
+    "md5": "^2.3.0"
+  },
   "devDependencies": {
-    "@types/bun": "^1.3.6",
-    "tsx": "^4.21.0"
+    "@types/bun": "latest",
+    "@types/md5": "^2.3.5"
   }
 }
