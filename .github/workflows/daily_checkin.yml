@@ -22,7 +22,8 @@ jobs:
       - name: Run Check-in Script
         env:
           # 从 GitHub Secrets 读取敏感数据
-          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          USER_EMAIL: ${{ secrets.USER_EMAIL }}
+          USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
           USER_TOKEN: ${{ secrets.USER_TOKEN }}
           # 设置时区，方便日志查看
           TZ: Asia/Shanghai
