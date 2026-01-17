@@ -3,11 +3,16 @@
  * 依赖: Node.js 18+
  */
 
-const TOKEN = process.env.USER_TOKEN
+const USER_TOKEN = process.env.USER_TOKEN
 const PUSHPLUS_TOKEN = process.env.PUSHPLUS_TOKEN
 
-if (!TOKEN) {
+// 检查环境
+if (!USER_TOKEN) {
   console.error("❌ 错误: 环境变量缺失。请检查 USER_TOKEN")
+  process.exit(1)
+}
+if (!PUSHPLUS_TOKEN) {
+  console.error("❌ 错误: 环境变量缺失。请检查 PUSHPLUS_TOKEN")
   process.exit(1)
 }
 
@@ -18,7 +23,6 @@ if (!TOKEN) {
  * @returns {Promise<void>}
  */
 const sendNotification = async (title, content) => {
-  if (!PUSHPLUS_TOKEN) return
   try {
     const url = "https://www.pushplus.plus/send"
     await fetch(url, {
@@ -46,15 +50,13 @@ const runCheckIn = async () => {
   const url = `https://flzt.top/api/v1/user/checkIn?t=${timestamp}`
 
   const headers = {
-    authorization: `Bearer ${TOKEN}`,
+    authorization: `${USER_TOKEN}`,
     Referer: "https://flzt.top/dashboard",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
   }
 
   try {
-    console.log(
-      `🚀 开始签到: ${new Date().toLocaleString("zh-CN", {timeZone: "Asia/Shanghai"})}`,
-    )
+    console.log(`🚀 开始签到: ${new Date().toLocaleString("zh-CN", {timeZone: "Asia/Shanghai"})}`,)
 
     const response = await fetch(url, {method: "GET", headers: headers})
 
@@ -65,7 +67,7 @@ const runCheckIn = async () => {
     } catch (e) {
       // 如果解析 JSON 失败，且状态码不对，那才是真的网络/服务器炸了
       if (!response.ok)
-        throw new Error(`HTTP ${response.status}: 服务器未返回 JSON`)
+        throw new Error(`HTTP ${response.status}: 服务器炸了未返回 JSON`)
     }
 
     let notifyTitle = ""
@@ -78,7 +80,13 @@ const runCheckIn = async () => {
       console.log(`✅ 签到成功! 获得: ${reward}MB`)
 
       notifyTitle = "机场签到成功 ✅"
-      notifyContent = `<b>获得:</b> ${reward} MB<br><b>总计:</b> ${total} GB<br><b>状态:</b> ${result.message}`
+      notifyContent = `
+        <div style="border: 1px solid #4caf50; padding: 10px; border-radius: 5px;">
+          <p><b>获得流量:</b> <span style="color: #4caf50; font-weight: bold;">${reward} MB</span></p>
+          <p><b>剩余总额:</b> ${total} GB</p>
+          <p style="font-size: 12px; color: grey;">${result.message}</p>
+        </div>
+      `
 
       // --- 场景 2: 已经签到过了 (HTTP 400 + status fail + 特定消息) ---
       // 服务端返回 400，但这是“假”错误，我们把它当“成功”处理
