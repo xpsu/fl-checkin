@@ -6,10 +6,8 @@
     "start": "bun run checkin.ts"
   },
   "dependencies": {
-    "md5": "^2.3.0"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "@types/md5": "^2.3.5"
+    "@types/bun": "latest"
   }
 }

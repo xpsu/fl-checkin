@@ -1,6 +1,6 @@
 /**
  * 优雅的自动登录+签到脚本 (TypeScript 版)
- * 运行方式: npx tsx checkin.ts
+ * 运行方式: bun checkin.ts
  */
 
 // 定义类型接口 (Interfaces)
