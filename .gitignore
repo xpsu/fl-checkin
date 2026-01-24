@@ -139,3 +139,8 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 .idea/
+
+# 本地开发文件
+AGENTS.md
+checkin-jsdoc.js
+新文件2.txt

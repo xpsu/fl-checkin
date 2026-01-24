@@ -28,10 +28,31 @@ interface ApiResult {
     };
 }
 
-// 环境变量处理 (TS 会警告环境变量可能为 undefined，需要用 ! 强制断言或进行检查)
-const USER_EMAIL = process.env.USER_EMAIL!
-const USER_PASSWORD = process.env.USER_PASSWORD!
+// ================= 环境变量验证 =================
+// 提前验证必需的环境变量，避免运行时才发现缺失
+const USER_EMAIL = process.env.USER_EMAIL
+const USER_PASSWORD = process.env.USER_PASSWORD
 const PUSHPLUS_TOKEN = process.env.PUSHPLUS_TOKEN
+
+if (!USER_EMAIL || !USER_PASSWORD) {
+    console.error('❌ 缺少环境变量 USER_EMAIL 或 USER_PASSWORD')
+    process.exit(1)
+}
+
+// ================= 日志工具 =================
+const log = (emoji: string, message: string): void => {
+    const timestamp = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+    console.log(`[${timestamp}] ${emoji} ${message}`)
+}
+
+const logError = (emoji: string, message: string, detail?: unknown): void => {
+    const timestamp = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+    if (detail !== undefined) {
+        console.error(`[${timestamp}] ${emoji} ${message}`, detail)
+    } else {
+        console.error(`[${timestamp}] ${emoji} ${message}`)
+    }
+}
 
 // ================= 配置与工具 =================
 
@@ -79,16 +100,16 @@ const sendNotification = async (title: string, content: string): Promise<void> =
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({token: PUSHPLUS_TOKEN, title, content, template: 'html'}),
         })
-        console.log('✅ 推送已发送')
+        log('✅', '推送已发送')
     } catch (e) {
         // TS 中 catch 的 error 默认为 unknown，需要断言
         const err = e as Error
-        console.error(`❌ 推送失败: ${err.message}`)
+        logError('❌', `推送失败: ${err.message}`)
     }
 }
 
 const login = async (): Promise<string> => {
-    console.log(`🔐 登录中: ${USER_EMAIL}...`)
+    log('🔐', `登录中: ${USER_EMAIL}...`)
     const res = await fetch(`${CONFIG.BASE_URL}/api/v1/passport/auth/login`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'User-Agent': CONFIG.UA},
@@ -103,7 +124,7 @@ const login = async (): Promise<string> => {
 }
 
 const checkIn = async (token: string): Promise<{ ok: boolean, data: ApiResult }> => {
-    console.log('🚀 执行签到...')
+    log('🚀', '执行签到...')
     const res = await fetch(`${CONFIG.BASE_URL}/api/v1/user/checkIn`, {
         headers: {authorization: token, 'User-Agent': CONFIG.UA}
     })
@@ -121,7 +142,7 @@ const processCheckInResult = (isOk: boolean, result: ApiResult): NotifyData => {
         const reward = (result.data?.reward_mb || 0) + ' MB'
         const total = formatTraffic(result.data?.total_checkin_traffic || 0)
 
-        console.log(`✅ 签到成功: ${reward}`)
+        log('✅', `签到成功: ${reward}`)
         return {
             type: 'success',
             title: '机场签到成功 🎉',
@@ -135,7 +156,7 @@ const processCheckInResult = (isOk: boolean, result: ApiResult): NotifyData => {
     }
 
     if (result.message && result.message.includes('already checked in')) {
-        console.log('⚠️ 今日已签到')
+        log('⚠️', '今日已签到')
         return {
             type: 'info',
             title: '机场今日已签 ✅',
@@ -147,18 +168,13 @@ const processCheckInResult = (isOk: boolean, result: ApiResult): NotifyData => {
         }
     }
 
-    console.error('❌ 签到失败:', result)
+    logError('❌', '签到失败:', result)
     throw new Error(result.message || JSON.stringify(result))
 }
 
 // ================= 主程序 (Main) =================
 
 const run = async () => {
-    if (!USER_EMAIL || !USER_PASSWORD) {
-        console.error('❌ 缺环境变量')
-        process.exit(1)
-    }
-
     try {
         const token = await login()
         const {ok, data} = await checkIn(token)
@@ -169,7 +185,7 @@ const run = async () => {
 
     } catch (e) {
         const error = e as Error
-        console.error('❌ 运行异常:', error.message)
+        logError('❌', '运行异常:', error.message)
         const errorHtml = renderCard('error', [
             {label: '错误信息', value: error.message, highlight: true},
             {label: '账号', value: USER_EMAIL}
