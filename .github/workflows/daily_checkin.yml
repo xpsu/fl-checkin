@@ -42,11 +42,18 @@ jobs:
         run: bun run checkin.ts
         
         # 👇 新增：自动提交变动以保持仓库活跃
-      - name: Keep Alive (Update heartbeat file)
+      - name: Keep Alive (Update heartbeat branch)
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # 1. 切换到一个独立的分支 heartbeat (如果不存在则创建)
+          git checkout -B heartbeat
+          
+          # 2. 更新心跳文件
           echo "Last check-in: $(date -d '8 hours' +'%Y-%m-%d %H:%M:%S') (CST)" > heartbeat.txt
+          
+          # 3. 提交并强制推送该分支 (只影响 heartbeat 分支，不影响 main 分支)
           git add heartbeat.txt
-          git commit -m "chore: auto update heartbeat to keep repo active" || exit 0
-          git push
+          git commit -m "chore: repository active heartbeat" --amend || git commit -m "chore: repository active heartbeat"
+          git push origin heartbeat --force
