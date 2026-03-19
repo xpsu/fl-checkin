@@ -9,6 +9,10 @@ on:
 jobs:
   checkin:
     runs-on: ubuntu-latest
+    
+    # 关键：必须增加写权限，否则无法推送代码回仓库
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -32,3 +36,13 @@ jobs:
           # 设置时区，方便日志查看
           TZ: Asia/Shanghai
         run: bun run checkin.ts
+        
+        # 👇 新增：自动提交变动以保持仓库活跃
+      - name: Keep Alive (Update heartbeat file)
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          echo "Last check-in: $(date -d '8 hours' +'%Y-%m-%d %H:%M:%S') (CST)" > heartbeat.txt
+          git add heartbeat.txt
+          git commit -m "chore: auto update heartbeat to keep repo active" || exit 0
+          git push
