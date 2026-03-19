@@ -1,0 +1,13 @@
+{
+  "name": "daily-auto-checkin",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "bun run checkin.ts"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
