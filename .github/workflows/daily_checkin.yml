@@ -3,13 +3,9 @@ name: Daily Auto Check-in
 on:
   schedule:
     # 每天 UTC 2:00 运行 (即北京时间 10:00)
-    - cron: '00 2 * * *'
+    - cron: '00 0 * * *'
   workflow_dispatch: # 允许手动点击按钮触发测试
   
-# 在这里设置全局环境变量，强制所有 Action 使用 Node 24 运行
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   checkin:
     runs-on: ubuntu-latest
@@ -20,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
