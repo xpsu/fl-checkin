@@ -2,12 +2,12 @@
   "name": "daily-auto-checkin",
   "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
-    "start": "bun run checkin.ts"
+    "start": "node checkin.ts"
   },
-  "dependencies": {
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
-  }
+  "dependencies": {},
+  "devDependencies": {}
 }
