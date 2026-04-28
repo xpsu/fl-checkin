@@ -1,6 +1,8 @@
 # 🛫 飞龙机场每日自动签到
 
-基于 TypeScript + Bun 编写的每日自动签到脚本，支持 PushPlus 微信推送。
+基于 TypeScript + Node.js 24+ 编写的每日自动签到脚本，支持 PushPlus 微信推送。
+
+> ⚠️ **运行要求**: 需要 Node.js 24+ 版本（原生支持 TypeScript）
 
 ## 🚀 快速开始
 
