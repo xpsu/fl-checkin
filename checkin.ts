@@ -84,6 +84,9 @@ const CONFIG = {
   BASE_URL: "https://flzt.org",
   PUSHPLUS_URL: "https://www.pushplus.plus/send",
   UA: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.7727.117 Safari/537.36",
+  FETCH_TIMEOUT: 10000,
+  FETCH_RETRIES: 3,
+  FETCH_RETRY_DELAY: 1000,
 };
 
 // ================= 工具函数 =================
@@ -95,6 +98,43 @@ const CONFIG = {
  */
 const formatTraffic = (bytes: number): string => {
   return (bytes / 1024 / 1024 / 1024).toFixed(2) + " GB";
+};
+
+/**
+ * 带有超时和自动重试的 Fetch
+ * - 超时：10 秒（AbortSignal.timeout）
+ * - 重试：最多 3 次，指数退避（1s → 2s → 4s）
+ * - 业务错误（400）不重试，网络错误才重试
+ */
+const fetchWithRetry = async (
+  url: string,
+  options: RequestInit,
+  retries = CONFIG.FETCH_RETRIES,
+): Promise<Response> => {
+  try {
+    const res = await fetch(url, {
+      ...options,
+      signal: AbortSignal.timeout(CONFIG.FETCH_TIMEOUT),
+    });
+
+    if (!res.ok && res.status !== 400) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    return res;
+  } catch (error) {
+    if (retries > 0) {
+      const attempt = CONFIG.FETCH_RETRIES - retries + 1;
+      const delay = CONFIG.FETCH_RETRY_DELAY * Math.pow(2, attempt - 1);
+      log(
+        "⏳",
+        `${options.method || "GET"} ${url} 失败，${delay}ms 后第 ${attempt} 次重试`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    throw error;
+  }
 };
 
 /**
@@ -150,7 +190,7 @@ const sendNotification = async (
 ): Promise<void> => {
   if (!PUSHPLUS_TOKEN) return;
   try {
-    const res = await fetch(CONFIG.PUSHPLUS_URL, {
+    const res = await fetchWithRetry(CONFIG.PUSHPLUS_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -177,15 +217,17 @@ const sendNotification = async (
 const login = async (): Promise<string> => {
   log("🔐", `登录中: ${USER_EMAIL}...`);
 
-  const res = await fetch(`${CONFIG.BASE_URL}/api/v1/passport/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "User-Agent": CONFIG.UA },
-    body: JSON.stringify({ email: USER_EMAIL, password: USER_PASSWORD }),
-  });
+  const res = await fetchWithRetry(
+    `${CONFIG.BASE_URL}/api/v1/passport/auth/login`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "User-Agent": CONFIG.UA },
+      body: JSON.stringify({ email: USER_EMAIL, password: USER_PASSWORD }),
+    },
+  );
 
   const json = (await res.json()) as LoginResponse;
 
-  // 根据实际 API 响应结构判断
   if (json.status !== "success" || !json.data?.auth_data) {
     throw new Error(json.message || "登录失败");
   }
@@ -202,14 +244,12 @@ const login = async (): Promise<string> => {
 const checkIn = async (token: string): Promise<CheckInResponse> => {
   log("🚀", "执行签到...");
 
-  const res = await fetch(`${CONFIG.BASE_URL}/api/v1/user/checkIn`, {
-    headers: { authorization: token, "User-Agent": CONFIG.UA },
-  });
-
-  // HTTP 层错误（非 2xx 且非 400）才抛出，400 是业务状态
-  if (!res.ok && res.status !== 400) {
-    throw new Error(`HTTP ${res.status}`);
-  }
+  const res = await fetchWithRetry(
+    `${CONFIG.BASE_URL}/api/v1/user/checkIn`,
+    {
+      headers: { authorization: token, "User-Agent": CONFIG.UA },
+    },
+  );
 
   return (await res.json()) as CheckInResponse;
 };
