@@ -1,10 +1,43 @@
 /**
  * 优雅的自动登录+签到脚本 (TypeScript 版)
- * 运行方式: node checkin.ts (需要 Node.js 24+)
+ * 运行方式: npm start (需要 Node.js 24+)
  */
 
-// 定义类型接口 (Interfaces)
-// 相比 JSDoc，interface 更清晰、可复用
+// ================= 基础类型定义 =================
+
+/** API 响应状态 */
+type ApiStatus = 'success' | 'fail';
+
+/** 通用 API 响应结构（基于实际响应分析） */
+interface ApiResponse<T = unknown> {
+    status: ApiStatus;
+    message: string;
+    data: T | null;
+    error: null; // 预留字段，当前 API 始终返回 null
+}
+
+/** 登录响应数据结构 */
+interface LoginData {
+    token: string;           // 用户 token
+    auth_data: string;       // Bearer 格式的授权令牌
+    is_admin: boolean;       // 是否为管理员
+}
+
+/** 签到响应数据结构 */
+interface CheckInData {
+    reward: string;          // 字节数（字符串）
+    reward_mb: string;       // MB 数（字符串）
+    total_checkin_traffic: number;  // 累计签到获得的总流量(字节)
+}
+
+/** 登录 API 响应 */
+type LoginResponse = ApiResponse<LoginData>;
+
+/** 签到 API 响应 */
+type CheckInResponse = ApiResponse<CheckInData>;
+
+// ================= UI 组件类型 =================
+
 interface CardItem {
     label: string;
     value: string;
@@ -17,61 +50,80 @@ interface NotifyData {
     items: CardItem[];
 }
 
-interface ApiResult {
-    status?: string;
-    message?: string;
-    data?: {
-        token?: string;
-        auth_data?: string;
-        reward_mb?: number;
-        total_checkin_traffic?: number;
-    };
-}
-
 // ================= 环境变量验证 =================
-// 提前验证必需的环境变量，避免运行时才发现缺失
-const USER_EMAIL = process.env.USER_EMAIL
-const USER_PASSWORD = process.env.USER_PASSWORD
-const PUSHPLUS_TOKEN = process.env.PUSHPLUS_TOKEN
+
+const USER_EMAIL = process.env.USER_EMAIL;
+const USER_PASSWORD = process.env.USER_PASSWORD;
+const PUSHPLUS_TOKEN = process.env.PUSHPLUS_TOKEN;
 
 if (!USER_EMAIL || !USER_PASSWORD) {
-    console.error('❌ 缺少环境变量 USER_EMAIL 或 USER_PASSWORD')
-    process.exit(1)
+    console.error('❌ 缺少环境变量 USER_EMAIL 或 USER_PASSWORD');
+    process.exit(1);
 }
 
 // ================= 日志工具 =================
+
+const getTimestamp = (): string =>
+    new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+
 const log = (emoji: string, message: string): void => {
-    const timestamp = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
-    console.log(`[${timestamp}] ${emoji} ${message}`)
-}
+    console.log(`[${getTimestamp()}] ${emoji} ${message}`);
+};
 
 const logError = (emoji: string, message: string, detail?: unknown): void => {
-    const timestamp = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
     if (detail !== undefined) {
-        console.error(`[${timestamp}] ${emoji} ${message}`, detail)
+        console.error(`[${getTimestamp()}] ${emoji} ${message}`, detail);
     } else {
-        console.error(`[${timestamp}] ${emoji} ${message}`)
+        console.error(`[${getTimestamp()}] ${emoji} ${message}`);
     }
-}
+};
 
-// ================= 配置与工具 =================
+// ================= 配置 =================
 
 const CONFIG = {
-    BASE_URL: 'https://flzt.top',
-    UA: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36'
-}
+    BASE_URL: 'https://flzt.org',
+    PUSHPLUS_URL: 'https://www.pushplus.plus/send',
+    UA: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.7727.117 Safari/537.36'
+};
 
+// ================= 工具函数 =================
+
+/**
+ * 将字节数格式化为 GB 字符串
+ * @param bytes - 字节数
+ * @returns 格式化后的字符串，如 "1.50 GB"
+ */
 const formatTraffic = (bytes: number): string => {
-    return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB'
-}
+    return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+};
+
+/**
+ * 邮箱脱敏显示
+ * @param email - 原始邮箱
+ * @returns 脱敏后的邮箱，如 "140***2054@qq.com"
+ */
+const maskEmail = (email: string): string => {
+    const [local, domain] = email.split('@');
+    if (!domain) return '***';
+    const masked = local.slice(0, 3) + '***' + local.slice(-4);
+    return `${masked}@${domain}`;
+};
+
+/**
+ * 判断消息是否为"已签到"
+ * @param message - API 返回的消息
+ * @returns 是否包含已签到关键词
+ */
+const isAlreadyCheckedIn = (message: string): boolean =>
+    message.toLowerCase().includes('already checked in');
 
 // ================= 视图层 (View) =================
 
 const renderCard = (type: 'success' | 'info' | 'error', data: CardItem[]): string => {
-    const isSuccess = type === 'success'
-    const color = isSuccess ? '#52c41a' : (type === 'info' ? '#faad14' : '#f5222d')
-    const icon = isSuccess ? '🎉' : (type === 'info' ? '📅' : '🚨')
-    const titleMap = {success: '签到成功', info: '今日已签', error: '运行失败'}
+    const isSuccess = type === 'success';
+    const color = isSuccess ? '#52c41a' : (type === 'info' ? '#faad14' : '#f5222d');
+    const icon = isSuccess ? '🎉' : (type === 'info' ? '📅' : '🚨');
+    const titleMap = { success: '签到成功', info: '今日已签', error: '运行失败' };
 
     return `
     <div style="max-width: 400px; margin: 0 auto; font-family: -apple-system, sans-serif;">
@@ -87,112 +139,146 @@ const renderCard = (type: 'success' | 'info' | 'error', data: CardItem[]): strin
         `).join('')}
       </div>
     </div>
-  `
-}
+  `;
+};
 
 // ================= 网络层 (Network) =================
 
+/**
+ * 发送 PushPlus 推送通知
+ * @param title - 通知标题
+ * @param content - HTML 格式内容
+ */
 const sendNotification = async (title: string, content: string): Promise<void> => {
-    if (!PUSHPLUS_TOKEN) return
+    if (!PUSHPLUS_TOKEN) return;
     try {
-        await fetch('https://www.pushplus.plus/send', {
+        const res = await fetch(CONFIG.PUSHPLUS_URL, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({token: PUSHPLUS_TOKEN, title, content, template: 'html'}),
-        })
-        log('✅', '推送已发送')
-    } catch (e) {
-        // TS 中 catch 的 error 默认为 unknown，需要断言
-        const err = e as Error
-        logError('❌', `推送失败: ${err.message}`)
-    }
-}
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: PUSHPLUS_TOKEN, title, content, template: 'html' }),
+        });
 
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        log('✅', '推送已发送');
+    } catch (e) {
+        const err = e as Error;
+        logError('❌', `推送失败: ${err.message}`);
+    }
+};
+
+/**
+ * 用户登录，获取授权令牌
+ * @returns Bearer 格式的 auth_data
+ * @throws 登录失败时抛出错误
+ */
 const login = async (): Promise<string> => {
-    log('🔐', `登录中: ${USER_EMAIL}...`)
+    log('🔐', `登录中: ${maskEmail(USER_EMAIL!)}...`);
+    
     const res = await fetch(`${CONFIG.BASE_URL}/api/v1/passport/auth/login`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json', 'User-Agent': CONFIG.UA},
-        body: JSON.stringify({email: USER_EMAIL, password: USER_PASSWORD})
-    })
+        headers: { 'Content-Type': 'application/json', 'User-Agent': CONFIG.UA },
+        body: JSON.stringify({ email: USER_EMAIL, password: USER_PASSWORD })
+    });
 
-    // 使用泛型告诉 TS 返回值是什么结构
-    const json = await res.json() as ApiResult
+    const json = await res.json() as LoginResponse;
 
-    if (!json.data?.auth_data && !json.data?.token) throw new Error(json.message || '登录失败')
-    return (json.data.auth_data || json.data.token)!
-}
-
-const checkIn = async (token: string): Promise<{ ok: boolean, data: ApiResult }> => {
-    log('🚀', '执行签到...')
-    const res = await fetch(`${CONFIG.BASE_URL}/api/v1/user/checkIn`, {
-        headers: {authorization: token, 'User-Agent': CONFIG.UA}
-    })
-    try {
-        return {ok: res.ok, data: await res.json() as ApiResult}
-    } catch {
-        return {ok: res.ok, data: {message: '非 JSON 响应'}}
+    // 根据实际 API 响应结构判断
+    if (json.status !== 'success' || !json.data?.auth_data) {
+        throw new Error(json.message || '登录失败');
     }
-}
+    
+    return json.data.auth_data;
+};
 
-// ================= 业务处理层 (Service) =================
+/**
+ * 执行签到请求
+ * @param token - Bearer 格式的授权令牌
+ * @returns 签到 API 响应数据
+ * @throws HTTP 网络错误时抛出
+ */
+const checkIn = async (token: string): Promise<CheckInResponse> => {
+    log('🚀', '执行签到...');
 
-const processCheckInResult = (isOk: boolean, result: ApiResult): NotifyData => {
-    if (isOk && result.status === 'success') {
-        const reward = (result.data?.reward_mb || 0) + ' MB'
-        const total = formatTraffic(result.data?.total_checkin_traffic || 0)
+    const res = await fetch(`${CONFIG.BASE_URL}/api/v1/user/checkIn`, {
+        headers: { authorization: token, 'User-Agent': CONFIG.UA }
+    });
 
-        log('✅', `签到成功: ${reward}`)
+    // HTTP 层错误（非 2xx 且非 400）才抛出，400 是业务状态
+    if (!res.ok && res.status !== 400) {
+        throw new Error(`HTTP ${res.status}`);
+    }
+
+    return await res.json() as CheckInResponse;
+};
+
+// ================= 业务逻辑层 (Service) =================
+
+/**
+ * 处理签到结果，生成通知数据
+ * @param result - 签到 API 响应数据
+ * @returns 通知数据对象
+ * @throws 不可恢复的错误时抛出
+ */
+const processCheckInResult = (result: CheckInResponse): NotifyData => {
+    // 签到成功场景
+    if (result.status === 'success' && result.data) {
+        const reward = `${result.data.reward_mb} MB`;
+        const total = formatTraffic(result.data.total_checkin_traffic);
+
+        log('✅', `签到成功: ${reward}`);
         return {
             type: 'success',
             title: '机场签到成功 🎉',
             items: [
-                {label: '获得流量', value: reward, highlight: true},
-                {label: '剩余总额', value: total},
-                {label: '账号', value: USER_EMAIL},
-                {label: '状态', value: result.message || 'Success'}
+                { label: '获得流量', value: reward, highlight: true },
+                { label: '剩余总额', value: total },
+                { label: '账号', value: USER_EMAIL },
+                { label: '状态', value: result.message }
             ]
-        }
+        };
     }
 
-    if (result.message && result.message.includes('already checked in')) {
-        log('⚠️', '今日已签到')
+    // 今日已签到场景（status: fail，但消息包含 already）
+    if (result.status === 'fail' && isAlreadyCheckedIn(result.message)) {
+        log('⚠️', '今日已签到');
         return {
             type: 'info',
             title: '机场今日已签 ✅',
             items: [
-                {label: '账号', value: USER_EMAIL},
-                {label: '提示', value: result.message},
-                {label: '时间', value: new Date().toLocaleTimeString('zh-CN')}
+                { label: '账号', value: USER_EMAIL },
+                { label: '提示', value: result.message },
+                { label: '时间', value: new Date().toLocaleTimeString('zh-CN') }
             ]
-        }
+        };
     }
 
-    logError('❌', '签到失败:', result)
-    throw new Error(result.message || JSON.stringify(result))
-}
+    // 其他失败场景
+    logError('❌', '签到失败:', result);
+    throw new Error(result.message || JSON.stringify(result));
+};
 
 // ================= 主程序 (Main) =================
 
 const run = async () => {
     try {
-        const token = await login()
-        const {ok, data} = await checkIn(token)
-        const notifyData = processCheckInResult(ok, data)
+        const token = await login();
+        const result = await checkIn(token);
+        const notifyData = processCheckInResult(result);
 
-        const htmlContent = renderCard(notifyData.type, notifyData.items)
-        await sendNotification(notifyData.title, htmlContent)
+        const htmlContent = renderCard(notifyData.type, notifyData.items);
+        await sendNotification(notifyData.title, htmlContent);
 
     } catch (e) {
-        const error = e as Error
-        logError('❌', '运行异常:', error.message)
-        const errorHtml = renderCard('error', [
-            {label: '错误信息', value: error.message, highlight: true},
-            {label: '账号', value: USER_EMAIL}
-        ])
-        await sendNotification('脚本运行失败 🚨', errorHtml)
-        process.exit(1)
-    }
-}
+        const error = e as Error;
+        logError('❌', '运行异常:', error.message);
 
-run()
+        const errorHtml = renderCard('error', [
+            { label: '错误信息', value: error.message, highlight: true },
+            { label: '账号', value: USER_EMAIL }
+        ]);
+        await sendNotification('脚本运行失败 🚨', errorHtml);
+        process.exit(1);
+    }
+};
+
+run();

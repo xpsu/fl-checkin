@@ -6,7 +6,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "start": "node checkin.ts"
+    "start": "node --env-file=.env checkin.ts"
   },
   "dependencies": {},
   "devDependencies": {}

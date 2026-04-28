@@ -23,5 +23,7 @@ Thumbs.db
 
 # Local dev files
 AGENTS.md
-checkin-jsdoc.js
-新文件2.txt
+
+# API analysis files (local testing only)
+analyze-api.ts
+api-analysis.json
