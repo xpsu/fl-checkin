@@ -85,7 +85,7 @@ const CONFIG = {
   PUSHPLUS_URL: "https://www.pushplus.plus/send",
   UA: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.7727.117 Safari/537.36",
   FETCH_TIMEOUT: 10000,
-  FETCH_RETRIES: 3,
+  FETCH_RETRIES: 1,
   FETCH_RETRY_DELAY: 1000,
 };
 
@@ -100,16 +100,21 @@ const formatTraffic = (bytes: number): string => {
   return (bytes / 1024 / 1024 / 1024).toFixed(2) + " GB";
 };
 
+/** 判断状态码是否值得重试：仅 429 与 5xx 属瞬态错误 */
+const isRetryableStatus = (status: number): boolean =>
+  status === 429 || status >= 500;
+
 /**
  * 带有超时和自动重试的 Fetch
- * - 超时：10 秒（AbortSignal.timeout）
- * - 重试：最多 3 次，指数退避（1s → 2s → 4s）
- * - 业务错误（400）不重试，网络错误才重试
+ * - 超时：10 秒（AbortSignal.timeout），每次尝试独立计时
+ * - 重试：仅针对网络异常、超时、429、5xx；指数退避 + 抖动
+ * - 4xx（含业务用 400）不重试，直接返回交由调用方解析
  */
 const fetchWithRetry = async (
   url: string,
   options: RequestInit,
   retries = CONFIG.FETCH_RETRIES,
+  attempt = 1,
 ): Promise<Response> => {
   try {
     const res = await fetch(url, {
@@ -117,23 +122,25 @@ const fetchWithRetry = async (
       signal: AbortSignal.timeout(CONFIG.FETCH_TIMEOUT),
     });
 
-    if (!res.ok && res.status !== 400) {
-      throw new Error(`HTTP ${res.status}`);
+    if (res.ok || !isRetryableStatus(res.status)) {
+      return res;
     }
 
-    return res;
+    await res.body?.cancel();
+    throw new Error(`HTTP ${res.status}`);
   } catch (error) {
-    if (retries > 0) {
-      const attempt = CONFIG.FETCH_RETRIES - retries + 1;
-      const delay = CONFIG.FETCH_RETRY_DELAY * Math.pow(2, attempt - 1);
-      log(
-        "⏳",
-        `${options.method || "GET"} ${url} 失败，${delay}ms 后第 ${attempt} 次重试`,
-      );
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      return fetchWithRetry(url, options, retries - 1);
+    if (attempt > retries) {
+      throw error;
     }
-    throw error;
+
+    const base = CONFIG.FETCH_RETRY_DELAY * Math.pow(2, attempt - 1);
+    const delay = Math.round(base * (0.5 + Math.random() * 0.5));
+    log(
+      "⏳",
+      `${options.method || "GET"} ${url} 失败(${(error as Error).message})，${delay}ms 后重试 (${attempt}/${retries})`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    return fetchWithRetry(url, options, retries, attempt + 1);
   }
 };
 
@@ -199,7 +206,7 @@ const sendNotification = async (
         content,
         template: "html",
       }),
-    });
+    }, 0);
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     log("✅", "推送已发送");
